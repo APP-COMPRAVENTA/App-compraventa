@@ -1,0 +1,42 @@
+/* css/style.css */
+/* (Copiado de tu etiqueta <style> original, menos el @import de la fuente) */
+body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+/* Estilos para la barra de navegación inferior fija */
+#bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+}
+.nav-item.active {
+    color: #10b981; /* Tailwind emerald-500 */
+}
+.nav-item:hover {
+    opacity: 0.8;
+}
+/* Estilos de formulario y tablas */
+input:focus, select:focus, textarea:focus {
+    border-color: #34d399; /* Tailwind emerald-400 */
+    box-shadow: 0 0 0 1px #34d399;
+}
+.scrollable-content {
+    padding-bottom: 96px; /* Espacio para la barra de navegación */
+}
+.card {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+.button-primary {
+    background-image: linear-gradient(to right, #10b981, #059669);
+    transition: all 0.2s;
+}
+.button-primary:hover {
+    background-image: linear-gradient(to right, #059669, #10b981);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+}
+/* Estilos específicos para el acordeón de Traspasos */
+.accordion-header {
+    cursor: pointer;
+    user-select: none;
+}

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APP Compraventa - Gestión de Motocicletas</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body class="h-screen overflow-hidden bg-slate-100">
+
+    <!-- LOGIN -->
+    <div id="login-container"
+         class="hidden min-h-screen flex items-center justify-center bg-slate-100">
+    </div>
+
+    <!-- APP -->
+    <div id="app-container"
+         class="hidden h-full flex flex-col">
+
+        <!-- LOADER -->
+        <div id="loader" class="flex flex-col items-center justify-center h-full">
+            <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-4 text-gray-600">Cargando aplicación y autenticando...</p>
+        </div>
+
+        <!-- CONTENIDO -->
+        <div id="content"
+             class="flex-1 overflow-y-auto p-4 pb-28 scroll-smooth">
+        </div>
+
+    </div>
+
+    <!-- NAV INFERIOR -->
+    <nav id="bottom-nav"
+         class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-xl
+                flex justify-around p-3 md:p-4 z-40">
+
+        <button id="nav-home" class="nav-item flex flex-col items-center text-gray-500 active" data-module="home">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+            <span class="text-xs mt-1">Inicio</span>
+        </button>
+
+        <button id="nav-balance" class="nav-item flex flex-col items-center text-gray-500" data-module="balance">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm10 2a2 2 0 11-4 0 2 2 0 014 0zm-4 4a2 2 0 100 4 2 2 0 000-4z" clip-rule="evenodd"/></svg>
+            <span class="text-xs mt-1">Balance</span>
+        </button>
+
+        <button id="nav-deudas" class="nav-item flex flex-col items-center text-gray-500" data-module="deudas">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm8 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/><path d="M10 9a1 1 0 000 2h.01a1 1 0 100-2H10z"/></svg>
+            <span class="text-xs mt-1">Cartera</span>
+        </button>
+
+        <button id="nav-inventario" class="nav-item flex flex-col items-center text-gray-500" data-module="inventario">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 00-2 0v1h2V3zM4 5a2 2 0 00-2 2v7a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-3.333L10 3.333 7.333 5H4zm6 5a2 2 0 100 4 2 2 0 000-4z"/></svg>
+            <span class="text-xs mt-1">Inventario</span>
+        </button>
+
+        <button id="nav-agente" class="nav-item flex flex-col items-center text-gray-500" data-module="agente">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a2 2 0 00-2 2v1H7a3 3 0 00-3 3v2a3 3 0 003 3h1v3a2 2 0 104 0v-3h1a3 3 0 003-3V8a3 3 0 00-3-3h-1V4a2 2 0 00-2-2zM7 8a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+            <span class="text-xs mt-1">Agente IA</span>
+        </button>
+
+    </nav>
+
+    <!-- ========== MODALES RESTAURADOS (desde tu HTML antiguo) ========== -->
+
+    <!-- Modal de confirmación global -->
+    <div id="general-confirm-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-11/12 max-w-sm card">
+            <h3 class="text-xl font-bold mb-4 border-b pb-2 text-red-600" id="confirm-modal-title">Confirmar Acción</h3>
+            <p class="mb-4 text-sm" id="confirm-modal-message">¿Estás seguro de que deseas realizar esta acción?</p>
+            <input type="hidden" id="confirm-action-id">
+            <input type="hidden" id="confirm-action-type">
+            <div class="flex justify-end space-x-2">
+                <button onclick="hideGeneralConfirmModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Cancelar</button>
+                <button onclick="confirmGeneralAction()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold" id="confirm-modal-button">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial de cliente -->
+    <div id="client-history-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-11/12 max-w-2xl card max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold mb-4 border-b pb-2 text-blue-700" id="history-modal-title">Historial de Cliente</h3>
+            <div id="history-content">
+                </div>
+            <div class="flex justify-end mt-6">
+                <button onclick="hideClientHistoryModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial de proveedor -->
+    <div id="provider-history-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-11/12 max-w-2xl card max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold mb-4 border-b pb-2 text-teal-700" id="provider-history-modal-title">Historial de Proveedor</h3>
+            <div id="provider-history-content">
+                </div>
+            <div class="flex justify-end mt-6">
+                <button onclick="hideProviderHistoryModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registrar gasto adicional / transfer -->
+    <div id="transfer-expense-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-11/12 max-w-sm card">
+            <h3 class="text-xl font-bold mb-4 border-b pb-2 text-red-600">Registrar Gasto Adicional</h3>
+            <p class="mb-4 text-sm" id="transfer-expense-info"></p>
+            <form id="transfer-expense-form">
+                </form>
+             <p id="transfer-expense-message" class="text-sm text-center mt-3 hidden"></p>
+        </div>
+    </div>
+
+    <!-- Regla de sugerencia de compra -->
+    <div id="suggestion-rule-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-11/12 max-w-lg card">
+            <h3 class="text-xl font-bold mb-4 border-b pb-2 text-green-700" id="suggestion-modal-title">Regla de Sugerencia de Compra</h3>
+            <p class="mb-4 text-sm text-gray-600">Defina la fórmula para calcular el precio máximo sugerido de compra para el inventario.</p>
+            <form id="suggestion-rule-form">
+                </form>
+            <p id="suggestion-rule-message" class="text-sm text-center mt-3 hidden"></p>
+        </div>
+    </div>
+
+    <!-- Modal registrar abono -->
+    <div id="abono-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-11/12 max-w-lg card">
+            <h3 class="text-xl font-bold mb-4 border-b pb-2" id="abono-modal-title">Registrar Abono</h3>
+            <p class="text-sm text-gray-600 mb-4" id="abono-debt-info"></p>
+            <form id="abono-form">
+                </form>
+            <p id="abono-message" class="text-sm text-center mt-3 hidden"></p>
+        </div>
+    </div>
+
+    <!-- Modal de reverso / anulación -->
+    <div id="revert-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-11/12 max-w-sm card">
+            <h3 class="text-xl font-bold mb-4 text-red-600">Confirmar Anulación</h3>
+            <p class="mb-4 text-sm">¿Estás seguro de que deseas <strong>anular</strong> esta transacción? Se registrará un movimiento reverso por el mismo monto.</p>
+            <p id="revert-inventory-warning" class="text-xs text-red-500 italic mb-4 hidden"></p> 
+            <p id="revert-info" class="font-semibold text-sm mb-4"></p>
+            <input type="hidden" id="revert-trans-id">
+            <div class="flex justify-end space-x-2">
+                <button onclick="hideRevertModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Cancelar</button>
+                <button onclick="anularTransaccion(document.getElementById('revert-trans-id').value)" 
+                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold">
+                    Sí, Anular
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== FIN MODALES ========== -->
+
+    <!-- SCRIPTS -->
+    <script type="module" src="/src/main.js"></script>
+
+</body>
+</html>

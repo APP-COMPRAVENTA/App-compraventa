@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Ruta esperada: tenants/{tenantId}/branches/{branchId}/inventario/{itemId}/{mediaType}/{fileName}
+    match /tenants/{tenantId}/branches/{branchId}/inventario/{itemId}/{mediaType}/{fileName} {
+      allow read: if request.auth != null;
+
+      allow write: if request.auth != null
+        && (
+          // Imagen: max 10MB
+          (
+            mediaType == "image"
+            && request.resource.contentType.matches('image/.*')
+            && request.resource.size <= 10 * 1024 * 1024
+          )
+          ||
+          // Video: solo mp4, max 300MB
+          (
+            mediaType == "video"
+            && request.resource.contentType.matches('video/mp4')
+            && request.resource.size <= 300 * 1024 * 1024
+          )
+        );
+    }
+  }
+}

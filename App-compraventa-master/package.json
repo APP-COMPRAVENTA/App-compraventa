@@ -1,0 +1,21 @@
+{
+  "name": "app-compraventa-frontend",
+  "version": "1.0.0",
+  "description": "Frontend para APP Compraventa",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "axios": "^1.6.2",
+    "firebase": "^12.7.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.8"
+  }
+}
