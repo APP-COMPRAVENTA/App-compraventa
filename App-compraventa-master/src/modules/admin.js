@@ -1,12 +1,11 @@
-import { renderHeader } from '../utils/utils.js';
-import { currentUser, userRole } from '../config/firebase.js'; // Importamos el rol para saber si mostrar la 3ra pestaña
+import { renderHeader, escapeHtml } from '../utils/utils.js';
+import { currentUser, userRole } from '../config/firebase.js';
 import { 
     createBranch, 
     getBranches, 
     inviteEmployee, 
     getEmployees, 
     updateEmployeeStatus,
-    // Nuevas funciones importadas del servicio (asegúrate de haber actualizado admin.service.js)
     getPendingApprovals, 
     getAllTenants,       
     approveUser,          
@@ -16,13 +15,12 @@ import {
     API_URL,
     getAuthHeaders,
     updateBranch,
-    deleteBranch  // Asegúrate de que esté en admin.service.js
+    deleteBranch
 } from '../services/admin.service.js';
 
 let currentTab = 'branches'; // 'branches' | 'team' | 'global'
-
-
-let editingBranchId = null; // null = Creando, ID = Editando
+let editingBranchId = null;  // null = Creando, ID = Editando
+let allBranchesCache = [];   // Memoria de sedes para el modal
 
 export async function renderAdmin() {
     const contentDiv = document.getElementById('content');
@@ -56,12 +54,10 @@ export async function renderAdmin() {
         </div>
     `;
     container.appendChild(privacyContainer);
-    // ----------------------------
 
     // Tabs
     const isSuperAdmin = userRole === 'SUPER_ADMIN';
     const tabsContainer = document.createElement('div');
-    // ... (Aquí va tu HTML de Tabs original que ya tienes) ...
     tabsContainer.innerHTML = `
         <div class="flex border-b border-gray-200 mb-6 overflow-x-auto">
             <button id="tab-branches" onclick="window.switchAdminTab('branches')" class="px-6 py-3 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700">🏢 Sucursales</button>
@@ -73,35 +69,25 @@ export async function renderAdmin() {
     container.appendChild(tabsContainer);
     contentDiv.appendChild(container);
 
-    // --- LÓGICA CORREGIDA USANDO TU 'currentUser' ---
+    // --- LÓGICA DE PRIVACIDAD ---
     const toggleInput = document.getElementById('privacy-toggle');
     const statusText = document.getElementById('privacy-status-text');
 
     const checkInitialStatus = async () => {
         try {
             if (!currentUser || !currentUser.tenantId) return;
-    
-            // LLAMAMOS A LA FUNCIÓN QUE IMPORTAMOS
             const headers = await getAuthHeaders(); 
-    
-            // Enviamos los headers en la petición
             const response = await fetch(`${API_URL}/public/tenants`, { 
                 method: 'GET',
                 headers: headers 
             });
-            
             const result = await response.json();
-            
             if (result.success) {
-                // Buscamos si nuestra empresa actual está en la lista de públicas
                 const isPublic = result.data.some(t => t.id === currentUser.tenantId && t.es_publico === true);
-                
                 toggleInput.checked = isPublic;
                 statusText.textContent = isPublic ? 'Público' : 'Privado';
             }
-            
             toggleInput.disabled = false;
-            
         } catch (error) {
             console.error("Error verificando privacidad:", error);
             statusText.textContent = 'Error';
@@ -127,9 +113,8 @@ export async function renderAdmin() {
     });
 
     checkInitialStatus();
-    // -----------------------------------------------
 
-    // Función Global de Tabs (Mantenida igual)
+    // Función Global de Tabs
     window.switchAdminTab = (tab) => {
         const tabs = ['branches', 'team', 'global'];
         tabs.forEach(t => {
@@ -146,14 +131,8 @@ export async function renderAdmin() {
     window.switchAdminTab('branches');
 }
 
-/**
- * LOGICA DE CARGA DE CONTENIDO
- * Llama a las funciones específicas de cada pestaña
- */
 async function loadTabContent(tab) {
     const area = document.getElementById('admin-content-area');
-    
-    // Mostramos el spinner de carga entre cambios de pestaña
     area.innerHTML = `
         <div class="flex justify-center p-10">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
@@ -166,7 +145,6 @@ async function loadTabContent(tab) {
         } else if (tab === 'team') {
             await renderTeamTab(area);
         } else if (tab === 'global') {
-            // Solo se ejecuta si es Super Admin (la UI ya lo protege)
             await renderGlobalManagement(area); 
         }
     } catch (error) {
@@ -178,15 +156,16 @@ async function loadTabContent(tab) {
         `;
     }
 }
+
 // =========================================================
-// 🏢 PESTAÑA 1: SUCURSALES (INTACTA - TU DISEÑO ORIGINAL)
+// 🏢 PESTAÑA 1: SUCURSALES
 // =========================================================
 async function renderBranchesTab(container) {
     const branches = await getBranches();
+    allBranchesCache = branches;
 
     let html = `
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            
             <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 sticky top-4">
                 <div class="flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
                     <div class="bg-emerald-100 p-2 rounded-lg text-emerald-600">
@@ -244,7 +223,6 @@ async function renderBranchesTab(container) {
                         ${branches.map(b => `
                             <div class="group bg-white rounded-xl border border-gray-200 hover:border-emerald-400 hover:shadow-md transition-all duration-200 overflow-hidden relative">
                                 <div class="h-1 w-full ${b.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-gray-300'}"></div>
-                                
                                 <div class="p-4">
                                     <div class="flex justify-between items-start mb-3">
                                         <div class="flex items-center gap-3">
@@ -276,7 +254,6 @@ async function renderBranchesTab(container) {
                                             </button>
                                         </div>
                                     </div>
-                        
                                     <div class="space-y-2 mt-2">
                                         <div class="flex items-start gap-2 text-gray-500 text-xs">
                                             <span class="flex-1">${b.address || 'Sin dirección'} ${b.city ? `(${b.city})` : ''}</span>
@@ -292,8 +269,6 @@ async function renderBranchesTab(container) {
     container.innerHTML = html;
 }
 
-
-// --- 1. MANEJO DEL SUBMIT (CREAR O ACTUALIZAR) ---
 window.handleBranchSubmit = async () => {
     const name = document.getElementById('branch-name').value;
     const address = document.getElementById('branch-address').value;
@@ -313,24 +288,18 @@ window.handleBranchSubmit = async () => {
         btn.innerHTML = editingBranchId ? "Actualizando..." : "Guardando...";
 
         if (editingBranchId) {
-            // Si hay un ID guardado, llamamos al servicio de actualizar (PATCH)
             await updateBranch(editingBranchId, branchData);
         } else {
-            // Si no hay ID, creamos una nueva
             await createBranch(branchData);
         }
 
-        // LIMPIEZA Y REFRESCO
-        window.resetBranchForm(); // Limpiamos el formulario
-        // Llamamos a la función que carga el contenido de la pestaña para ver los cambios
+        window.resetBranchForm();
         if (typeof window.switchAdminTab === 'function') {
             window.switchAdminTab('branches');
         } else {
-            // Si no usas switchAdminTab, puedes usar tu renderizador directo:
             const container = document.getElementById('admin-tab-content');
             renderBranchesTab(container);
         }
-
     } catch (e) {
         console.error(e);
         alert("❌ Error: " + e.message);
@@ -340,55 +309,36 @@ window.handleBranchSubmit = async () => {
     }
 };
 
-// --- 2. PREPARAR EL FORMULARIO PARA EDITAR ---
-// Esta es la función que te daba error. Al poner "window." adelante se soluciona.
 window.editBranch = (id, name, address, phone, city) => {
-    editingBranchId = id; // Guardamos el ID que estamos editando
-    
-    // Cambiamos los textos para que el usuario sepa que está editando
+    editingBranchId = id;
     document.getElementById('branch-form-title').innerText = "Editar Sede: " + name;
     document.getElementById('btn-branch-submit').innerText = "Actualizar Cambios";
-    
-    // Mostramos el botón de cancelar (que suele estar oculto)
     const btnCancel = document.getElementById('btn-branch-cancel');
     if (btnCancel) btnCancel.classList.remove('hidden');
 
-    // Llenamos los campos del formulario con los datos actuales
     document.getElementById('branch-name').value = name || '';
     document.getElementById('branch-address').value = address || '';
     document.getElementById('branch-phone').value = phone || '';
     document.getElementById('branch-city').value = city || '';
-
-    // Subimos la pantalla suavemente para que vea el formulario
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// --- 3. LIMPIAR EL FORMULARIO (RESET) ---
 window.resetBranchForm = () => {
-    editingBranchId = null; // Olvidamos el ID de edición
-    
-    // Restauramos los textos originales
+    editingBranchId = null;
     document.getElementById('branch-form-title').innerText = "Nueva Sede";
     document.getElementById('btn-branch-submit').innerText = "Guardar Sede";
-    
-    // Ocultamos el botón cancelar
     const btnCancel = document.getElementById('btn-branch-cancel');
     if (btnCancel) btnCancel.classList.add('hidden');
-    
-    // Vaciamos los inputs
     document.getElementById('branch-name').value = '';
     document.getElementById('branch-address').value = '';
     document.getElementById('branch-phone').value = '';
     document.getElementById('branch-city').value = '';
 };
 
-// --- 4. ELIMINAR ---
 window.deleteBranch = async (id) => {
     if (!confirm("⚠️ ¿Seguro que quieres eliminar esta sede?")) return;
-
     try {
         await deleteBranch(id);
-        // Refrescamos la lista
         if (typeof window.switchAdminTab === 'function') {
             window.switchAdminTab('branches');
         } else {
@@ -399,32 +349,31 @@ window.deleteBranch = async (id) => {
         alert("❌ Error al eliminar: " + e.message);
     }
 };
+
 // =========================================================
-// 👥 PESTAÑA 2: EQUIPO (ACTUALIZADA CON SELECTOR DE ROL)
+// 👥 PESTAÑA 2: EQUIPO Y ACCESOS
 // =========================================================
 async function renderTeamTab(container) {
     const isSuperAdmin = userRole === 'SUPER_ADMIN';
     const branches = await getBranches();
-    const employees = await getEmployees(); // Trae a todos los usuarios del tenant
+    allBranchesCache = branches; // <- Guarda las sedes para el modal de multi-sedes
+    const employees = await getEmployees();
 
-    // Si eres SuperAdmin, trae los admins globales (puede ser array vacío)
     let admins = [];
     try {
         if (isSuperAdmin && typeof getAllAdmins === 'function') {
-            admins = await getAllAdmins(); // espera array [{ email, role, status, tenantId, uid }, ...]
+            admins = await getAllAdmins();
         }
     } catch (e) {
         console.warn("No se pudieron obtener admins globales:", e.message);
         admins = [];
     }
 
-    // Separamos los datos locales (del tenant actual)
     const adminUsers = employees.filter(e => e.role === 'ADMIN' || e.role === 'SUPER_ADMIN');
     const staffUsers = employees.filter(e => e.role === 'EMPLOYEE');
 
     container.innerHTML = `
         <div class="space-y-8 animate-in fade-in duration-500">
-            
             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                 <div class="mb-4">
                     <h3 class="text-lg font-bold text-slate-800">Agregar Miembro al Equipo</h3>
@@ -503,11 +452,11 @@ async function renderTeamTab(container) {
                             <tr>
                                 <th class="px-6 py-3 text-[10px] font-bold uppercase">Nombre y Contacto</th>
                                 <th class="px-6 py-3 text-[10px] font-bold uppercase text-center">Sede Asignada</th>
-                                <th class="px-6 py-3 text-[10px] font-bold uppercase text-right">Estado</th>
+                                <th class="px-6 py-3 text-[10px] font-bold uppercase text-right">Acción</th>
                             </tr>
                         </thead>
                         <tbody id="staff-list">
-                        ${renderUserRows(staffUsers, branches)}
+                            ${renderUserRows(staffUsers, branches)}
                         </tbody>
                     </table>
                 </div>
@@ -524,18 +473,14 @@ function setupEmployeeForm() {
 
     form.onsubmit = async (e) => {
         e.preventDefault();
-        
-        // Capturar el botón para mostrar estado de carga
         const btn = form.querySelector('button[type="submit"]');
         const originalText = btn.innerHTML;
-        
-        // Obtener datos del formulario
         const formData = new FormData(form);
         const employeeData = {
             name: formData.get('name'),
             email: formData.get('email'),
             branchId: formData.get('branchId'),
-            role: formData.get('role'), // El backend validará si el usuario tiene permiso para este rol
+            role: formData.get('role'),
             department: 'General'
         };
 
@@ -546,17 +491,12 @@ function setupEmployeeForm() {
             </span>`;
             btn.disabled = true;
 
-            // Llamada al servicio que ya tienes en admin.service.js
             await inviteEmployee(employeeData);
-
-            // ÉXITO
             alert("✅ Invitación enviada con éxito.");
             form.reset();
             
-            // Recargar la pestaña para ver al nuevo usuario en la lista
             const area = document.getElementById('admin-content-area');
             await renderTeamTab(area);
-
         } catch (error) {
             console.error("Error al invitar:", error);
             alert("❌ Error: " + error.message);
@@ -567,41 +507,48 @@ function setupEmployeeForm() {
     };
 }
 
-/**
- * Genera las filas de la tabla reutilizando el estilo
- */
 function renderUserRows(users, branches = []) {
-
     if (users.length === 0) {
         return `<tr><td colspan="3" class="px-6 py-8 text-center text-slate-400 italic text-sm">No hay registros en esta categoría</td></tr>`;
     }
 
-    return users.map(user => `
+    return users.map(user => {
+        const userBranches = user.allowedBranches && user.allowedBranches.length > 0 
+            ? user.allowedBranches 
+            : (user.branchId ? [user.branchId] : []);
+
+        const badgesHtml = userBranches.map(bId => {
+            const b = branches.find(x => x.id === bId);
+            return `<span class="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded mr-1 mb-1">${b ? b.name : 'Sede desconocida'}</span>`;
+        }).join('') || '<span class="text-xs text-slate-400 italic">Sin asignar</span>';
+
+        return `
         <tr class="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
             <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
                     <div class="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs">
-                        ${(user.displayName || 'U').charAt(0).toUpperCase()}
+                        ${(user.displayName || user.name || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <div class="text-sm font-bold text-slate-700">${user.displayName || 'Usuario'}</div>
+                        <div class="text-sm font-bold text-slate-700">${user.displayName || user.name || 'Usuario'}</div>
                         <div class="text-xs text-slate-400">${user.email}</div>
                     </div>
                 </div>
             </td>
+            
             <td class="px-6 py-4 text-center">
-                <span class="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded">
-    ${(() => {
-        if (!user.branchId) return 'Sin asignar';
-        const b = branches.find(x => x.id === user.branchId);
-        return b ? b.name : 'Sin sede';
-    })()}
-</span>
-
+                <div class="flex flex-wrap justify-center gap-1">
+                    ${badgesHtml}
+                </div>
             </td>
-            <td class="px-6 py-4 text-right space-y-2">
 
-            ${user.status !== 'PENDING' ? `
+            <td class="px-6 py-4 text-right space-x-2">
+                <button onclick="window.openAssignBranchesModal('${user.id}', '${escapeHtml(user.email)}', '${userBranches.join(',')}')"
+                    class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded transition-colors inline-block mb-1 sm:mb-0">
+                    Editar Sedes
+                </button>
+                
+                ${user.status !== 'PENDING' ? `
                 <button 
                     onclick="window.toggleUserStatus('${user.id}', '${user.status}')"
                     class="text-[10px] font-bold ${
@@ -612,20 +559,95 @@ function renderUserRows(users, branches = []) {
                     ${user.status === 'ACTIVE' ? 'Desactivar' : 'Activar'}
                 </button>
                 ` : ''}
-                
-
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 }
 
+// =========================================================
+// 🪟 MODAL Y LÓGICA DE ASIGNACIÓN MULTI-SEDES
+// =========================================================
+window.openAssignBranchesModal = async (userId, email, currentBranchesStr) => {
+    const currentBranches = currentBranchesStr ? currentBranchesStr.split(',') : [];
+    
+    // Si la caché está vacía, la llenamos de inmediato
+    if (!allBranchesCache || allBranchesCache.length === 0) {
+        try {
+            allBranchesCache = await getBranches() || [];
+        } catch (e) {
+            console.error("Error al obtener sedes:", e);
+        }
+    }
 
-/**
- * Renderiza filas para admins en la sección 🛡️
- * No modifica layout ni estilos — solo genera las <tr> necesarias.
- * admins: array de { email, role, status, tenantId, uid } (puede ser [])
- * branches: se pasa solo para compatibilidad visual si alguna empresa local aparece
- */
+    let modal = document.getElementById('assign-branches-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'assign-branches-modal';
+        modal.className = 'fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4';
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            <h3 class="text-lg font-bold text-slate-800 mb-1">Asignar Sedes al Trabajador</h3>
+            <p class="text-xs text-slate-500 mb-4 font-mono">${email}</p>
+            
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Seleccione los negocios permitidos:</p>
+            <div id="branches-checkbox-list" class="space-y-2 max-h-56 overflow-y-auto mb-6 pr-1">
+                ${allBranchesCache.map(b => `
+                    <label class="flex items-center gap-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                        <input type="checkbox" value="${b.id}" ${currentBranches.includes(b.id) ? 'checked' : ''} class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500">
+                        <span class="text-sm font-semibold text-slate-700">${b.name}</span>
+                    </label>
+                `).join('')}
+            </div>
+
+            <div class="flex justify-end gap-3 border-t border-slate-100 pt-4">
+                <button type="button" onclick="document.getElementById('assign-branches-modal').classList.add('hidden')" class="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                    Cancelar
+                </button>
+                <button type="button" onclick="window.saveWorkerBranches('${userId}')" id="btn-save-branches" class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-md transition-all">
+                    Guardar Cambios
+                </button>
+            </div>
+        </div>
+    `;
+    modal.classList.remove('hidden');
+};
+
+window.saveWorkerBranches = async (userId) => {
+    const modal = document.getElementById('assign-branches-modal');
+    const checkedInputs = modal.querySelectorAll('input[type="checkbox"]:checked');
+    const selectedBranches = Array.from(checkedInputs).map(cb => cb.value);
+
+    if (selectedBranches.length === 0) {
+        alert("Debe seleccionar al menos una sede para el trabajador.");
+        return;
+    }
+
+    const btn = document.getElementById('btn-save-branches');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Guardando...';
+
+    try {
+        await updateEmployeeStatus(userId, {
+            allowedBranches: selectedBranches,
+            branchId: selectedBranches[0] // Retrocompatibilidad
+        });
+        modal.classList.add('hidden');
+        alert("✅ Sedes actualizadas correctamente.");
+        
+        const area = document.getElementById('admin-content-area');
+        if (typeof renderTeamTab === 'function') await renderTeamTab(area);
+    } catch (error) {
+        console.error(error);
+        alert("Error al actualizar sedes: " + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Guardar Cambios';
+    }
+};
+
 function renderAdminsRows(admins = [], branches = []) {
     if (!admins || admins.length === 0) {
         return `<tr><td colspan="3" class="px-6 py-8 text-center text-slate-400 italic text-sm">No hay administradores registrados</td></tr>`;
@@ -635,9 +657,7 @@ function renderAdminsRows(admins = [], branches = []) {
         const uid = a.uid || a.id || '';
         const email = a.email || (a.data && a.data.email) || 'Sin email';
         const status = a.status || 'PENDING';
-        // Si hay branch con mismo tenantId (raro), mostramos su nombre; si no, mostramos tenantId legible
         let tenantLabel = a.tenantId || '';
-        // mejorar legibilidad: reemplazar guiones por espacios y capitalizar
         if (tenantLabel) {
             tenantLabel = tenantLabel.replace(/[-_]/g, ' ');
             tenantLabel = tenantLabel.split(' ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
@@ -686,15 +706,8 @@ function renderAdminsRows(admins = [], branches = []) {
     }).join('');
 }
 
-/**
- * Handler intermedio que evita errores si la función real no está definida aún.
- * Si implementas luego `window.toggleAdminStatus(uid, status)` (o una función similar),
- * este helper la llamará. Si no existe, muestra un mensaje informativo.
- */
 window.tryToggleAdminStatus = async (uid, currentStatus) => {
     const newStatus = currentStatus === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
-    
-    // Alerta de confirmación para el Efecto Dominó
     const confirmMessage = newStatus === 'DISABLED' 
         ? `⚠️ ¿ESTÁS SEGURO?\n\nAl desactivar a este ADMIN, todos sus trabajadores perderán el acceso inmediatamente (Efecto Dominó).`
         : `¿Activar este administrador?`;
@@ -702,19 +715,10 @@ window.tryToggleAdminStatus = async (uid, currentStatus) => {
     if (!confirm(confirmMessage)) return;
 
     try {
-        // Mostramos feedback de carga (opcional)
         console.log(`Cambiando estado de ${uid} a ${newStatus}...`);
-        
         await updateAdminStatus(uid, newStatus);
-        
-        // Si tienes SweetAlert o similar úsalo aquí, si no, un alert simple
         alert(`✅ Éxito: El administrador y sus dependientes han sido actualizados.`);
-        
-        // Recargar la tabla o el componente para ver los cambios
         if (typeof loadPendingUsers === 'function') renderAdmin(); 
-       
-         
-
     } catch (error) {
         console.error("Error al cambiar estado:", error);
         alert(`❌ Error: ${error.message}`);
@@ -722,15 +726,8 @@ window.tryToggleAdminStatus = async (uid, currentStatus) => {
 };
 
 // =========================================================
-// 🌐 PESTAÑA 3: SOLICITUDES GLOBALES (NUEVA - SOLO SUPER ADMIN)
+// 🌐 PESTAÑA 3: SOLICITUDES GLOBALES (SUPER ADMIN)
 // =========================================================
-// Agregar esta función auxiliar para crear empresas desde el front
-
-// ... Resto del código ...
-
-// --- PESTAÑA 3: SUPER ADMIN (GLOBAL) ---
-// js/modules/admin.js
-
 async function renderGlobalManagement(container) {
     container.innerHTML = `
         <div class="space-y-6 animate-in fade-in duration-500">
@@ -759,7 +756,7 @@ async function renderGlobalManagement(container) {
                             </tr>
                         </thead>
                         <tbody id="global-pending-table-body" class="divide-y divide-slate-100">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -768,8 +765,6 @@ async function renderGlobalManagement(container) {
     loadPendingUsers();
 }
 
-// js/modules/admin.js
-
 async function loadPendingUsers() {
     const tbody = document.getElementById('global-pending-table-body');
     if (!tbody) return;
@@ -777,7 +772,6 @@ async function loadPendingUsers() {
     try {
         tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-slate-600"></div></td></tr>';
 
-        // Obtenemos usuarios pendientes y lista de empresas existentes (para los "extraños")
         const [users, tenants] = await Promise.all([getPendingApprovals(), getAllTenants()]);
 
         if (users.length === 0) {
@@ -794,7 +788,7 @@ async function loadPendingUsers() {
         }
 
         tbody.innerHTML = users.map(u => {
-            const isNewCompanyRequest = !!u.companyName; // ¿Viene del formulario de "Registrar Empresa"?
+            const isNewCompanyRequest = !!u.companyName;
 
             return `
             <tr id="row-${u.uid}" class="hover:bg-slate-50 transition-colors group">
@@ -851,25 +845,19 @@ async function loadPendingUsers() {
                 </td>
             </tr>
         `}).join('');
-
     } catch (e) {
         console.error(e);
         tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-red-500 text-xs font-bold">Error de conexión: ${e.message}</td></tr>`;
     }
 }
 
-
 window.approveUserHandler = async (uid, email, name) => {
-    // 1. Detectar tipo de solicitud
     const reqType = document.getElementById(`req-type-${uid}`).value;
     const btn = document.querySelector(`#row-${uid} button`);
-    
     let payload = { name, email };
 
-    // 2. Preparar datos según el caso
     if (reqType === 'NEW_COMPANY') {
         const companyName = document.getElementById(`company-name-${uid}`).value;
-        // Enviamos flag especial para que el backend sepa que debe crear el tenant
         payload = { 
             ...payload, 
             isNewCompany: true, 
@@ -893,7 +881,6 @@ window.approveUserHandler = async (uid, email, name) => {
         };
     }
 
-    // 3. Ejecutar llamada
     try {
         const originalText = btn.innerHTML;
         btn.innerHTML = '<span class="animate-spin inline-block mr-2">⏳</span> Procesando...';
@@ -902,7 +889,6 @@ window.approveUserHandler = async (uid, email, name) => {
 
         await approveUser(uid, payload);
         
-        // 4. Feedback Visual (Efecto de éxito)
         const row = document.getElementById(`row-${uid}`);
         row.innerHTML = `
             <td colspan="4" class="p-4 bg-emerald-50 text-center text-emerald-700 font-bold border-t border-emerald-100">
@@ -918,7 +904,6 @@ window.approveUserHandler = async (uid, email, name) => {
                 if (document.querySelectorAll('#global-pending-table-body tr').length === 0) loadPendingUsers();
             }, 500);
         }, 1500);
-
     } catch (e) {
         alert("Error: " + e.message);
         btn.disabled = false;
@@ -933,13 +918,9 @@ window.toggleUserStatus = async (userId, currentStatus) => {
 
     try {
         await updateEmployeeStatus(userId, { status: newStatus });
-
         const area = document.getElementById('admin-content-area');
         await renderTeamTab(area);
-
     } catch (e) {
         alert("Error: " + e.message);
     }
-
-
-}
+};

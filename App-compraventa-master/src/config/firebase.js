@@ -112,12 +112,14 @@ export async function loginWithGoogle() {
       if (response.ok || response.status === 202) {
           const userData = backendData.data || {};
           currentUser = {
-              uid: result.user.uid,
-              email: result.user.email,
-              displayName: userData.displayName || result.user.displayName,
-              tenantId: userData.tenantId || 'system',
-              role: userData.role || 'GUEST'
-          };
+            uid: result.user.uid,
+            email: result.user.email,
+            displayName: userData.displayName || result.user.displayName,
+            tenantId: userData.tenantId || 'system',
+            role: userData.role || 'GUEST',
+            branchId: userData.branchId || null,
+            allowedBranches: userData.allowedBranches || (userData.branchId ? [userData.branchId] : []) // <--- AGREGAR ESTA LÍNEA
+        };
           isAuthReady = true;
           watchUserStatus(currentUser.tenantId, currentUser.uid);
           return { success: true, user: result.user, backend: userData, status: response.status };
@@ -199,14 +201,19 @@ export function initializeFirebase() {
               tenantId: userData.tenantId,
               role: userData.role,
               branchId: userData.branchId,
+              allowedBranches: userData.allowedBranches || (userData.branchId ? [userData.branchId] : []), // <--- AGREGAR ESTA LÍNEA
               commissions: userData.commissions || {}
-          };
+            };
           userRole = userData.role;
           
-          // 🚨 NUEVO: Forzar la sede global para que los datos descarguen correctamente
-          if (userRole === 'EMPLOYEE' && userData.branchId) {
-              setSelectedBranch(userData.branchId);
-          }
+          // Si el trabajador no tiene sede guardada en memoria, le asignamos la primera permitida
+          if (userRole === 'EMPLOYEE') {
+            const currentSaved = localStorage.getItem('selectedBranchId');
+            const validBranches = userData.allowedBranches || [userData.branchId];
+            if (!currentSaved || !validBranches.includes(currentSaved)) {
+                setSelectedBranch(validBranches[0]);
+            }
+        }
 
           userStatus = 'ACTIVE';
           isAuthReady = true;

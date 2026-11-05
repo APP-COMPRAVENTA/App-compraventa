@@ -83,16 +83,30 @@ export async function renderHeader(title = "", subtitle = "") {
         const userPhoto = currentUser?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=10b981&color=fff&bold=true`;
         
         // Lógica de Sede (Admin vs Empleado) - Igual que definimos antes
+        // --- LÓGICA DE SEDES PERMITIDAS (Admin vs Trabajador) ---
+        let userBranches = [];
+        if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+            userBranches = branches; // El administrador ve todas las sedes
+        } else {
+            // El trabajador solo ve las sedes que le fueron asignadas
+            const allowedIds = currentUser?.allowedBranches && currentUser.allowedBranches.length > 0
+                ? currentUser.allowedBranches
+                : (currentUser?.branchId ? [currentUser.branchId] : []);
+            userBranches = branches.filter(b => allowedIds.includes(b.id));
+        }
+
         let branchUI = '';
-        if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN')  {
+        // Si el usuario (sea Admin o Trabajador) tiene 2 o más sedes, activamos el selector desplegable:
+        if (userBranches.length > 1) {
             branchUI = `
                 <div class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
                     <span class="text-[10px] font-black text-gray-400 uppercase">Sede:</span>
                     <select onchange="window.changeBranch(this.value)" class="bg-transparent text-sm font-bold text-emerald-600 outline-none cursor-pointer">
-                        ${branches.map(b => `<option value="${b.id}" ${currentBranchId === b.id ? 'selected' : ''}>${b.name}</option>`).join('')}
+                        ${userBranches.map(b => `<option value="${b.id}" ${currentBranchId === b.id ? 'selected' : ''}>${b.name}</option>`).join('')}
                     </select>
                 </div>`;
         } else {
+            // Si solo tiene 1 sede o ninguna asignada, se mantiene fija:
             branchUI = `
                 <div class="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
                     <span class="text-[10px] font-black text-gray-400 uppercase">Sede:</span>
